@@ -148,22 +148,22 @@ ComboAgent receives: item = {branch, op, parent_branch, target_file, target_func
 ```
 GateAgent receives: {top_nodes, tree_text, best_branch, best_score, generation}
 
-1. mcts_gate_notify(channel_id, tree_text, top_nodes, timeout=30min)
-   → push tree snapshot to messaging channel (WhatsApp/Telegram)
-   → create cron task: auto-continue after timeout
+1. Send tree snapshot via OpenClaw messaging channel (Telegram/WhatsApp/Slack)
+   Format: tree_text + top_nodes summary + available commands
+   Register cron auto-continue after 30min timeout
 
-2. mcts_gate_wait(resume_token)
-   → block until user responds or timeout fires
+2. Wait for user response (poll channel or webhook)
 
    Accepted responses:
      "continue"           → {action: "continue"}
      "stop"               → {action: "stop"}
      "rollback"           → {action: "rollback"}
      "select gen5/insert" → {action: "select", selected_branch: "..."}
-     "freeze {branch}"    → {action: "freeze", target: branch}
-     "boost {branch}"     → {action: "boost", target: branch}
+     "freeze {branch}"    → {action: "freeze", selected_branch: branch}
+     "boost {branch}"     → {action: "boost", selected_branch: branch}
 
-3. mcts_step("gate_done", action=..., selected_branch=...)
+3. Cancel cron timer, then:
+   mcts_step("gate_done", action=..., selected_branch=...)
 ```
 
 ---
