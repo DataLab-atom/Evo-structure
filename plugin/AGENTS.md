@@ -55,6 +55,8 @@ LOOP:
       if step.action == "gate":
           spawn GateAgent(step)          ← every gate_interval generations
           step = mcts_step("gate_done", ...) from GateAgent result
+          if step.action == "done":
+              break  ← user stopped; exit loop
 
       spawn ReflectAgent(step)
       step = mcts_step("reflect_done")

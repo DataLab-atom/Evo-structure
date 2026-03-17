@@ -9,7 +9,6 @@ The agents call these tools; the LLM handles code generation and reflection.
 
 from __future__ import annotations
 
-import fnmatch
 import os
 import subprocess
 import uuid
