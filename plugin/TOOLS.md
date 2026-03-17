@@ -48,6 +48,9 @@
 
 ---
 
+### /search Skill (initialization)
+- `mcts_init` — initialize a new MCTS search run with project_root, benchmark_cmd, baseline_score, objective
+
 ## General Rules
 
 - All deterministic MCTS bookkeeping goes through `mcts_*` MCP tools.

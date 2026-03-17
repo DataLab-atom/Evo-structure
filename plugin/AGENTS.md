@@ -205,12 +205,13 @@ ReflectAgent receives: {keep, eliminate, best_branch, best_score, generation}
 ## State Machine — Phase Reference
 
 ### `mcts_step("begin_generation")`
-Returns `{action: "dispatch_combos", generation, items: [...]}`
+Returns `{action: "dispatch_combos", generation, batch_size, items: [...]}`
+(May also include `resumed: true` when recovering from a crash mid-batch.)
 
 Each item: `{branch, op, parent_branch, target_file, target_function, node_a, node_b, direction_hint}`
 
 ### `mcts_step("code_ready", branch, parent_commit)`
-Returns `{action: "check_policy", branch, diff, changed_files, protected_patterns, target_file, op}`
+Returns `{action: "check_policy", branch, parent_commit, op, target_file, parent_branch, changed_files, diff, protected_patterns}`
 
 ### `mcts_step("policy_pass", branch)`
 Returns `{action: "run_benchmark", branch, op, parent_branch}`
@@ -222,7 +223,7 @@ Returns `{action: "worker_done", branch, rejected: true, reason}`
 Returns `{action: "worker_done", branch, fitness, success, is_new_best, total_evals}`
 
 ### `mcts_step("select")`
-Returns `{action: "gate"|"reflect", keep, eliminate, best_branch, best_score, top_nodes, tree_text}`
+Returns `{action: "gate"|"reflect", keep, eliminate, best_branch, best_score, top_nodes, tree_text, generation}`
 
 ### `mcts_step("gate_done", action, selected_branch="")`
 Returns `{action: "reflect"}` | `{action: "done"}`

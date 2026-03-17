@@ -34,7 +34,7 @@ code_hash = sha256(content of item.target_file on parent_branch)
 result = mcts_check_cache(op=item.op, code_hash=code_hash)
 ```
 
-If cached → `mcts_step("fitness_ready", ..., fitness=result.score, cached=True)` → exit.
+If cached → `mcts_step("fitness_ready", branch=item.branch, fitness=result.score, success=True, op=item.op, parent_branch=item.parent_branch, code_hash=code_hash)` → exit.
 
 ### 3. Read Memory
 
