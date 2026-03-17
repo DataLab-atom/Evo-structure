@@ -140,11 +140,8 @@ def mcts_register_targets(targets: list[dict]) -> dict:
             id, file, function, lines (optional), impact (optional), description (optional).
     """
     state = _get_state()
-    # Store targets as part of config metadata (lightweight — just for memory paths)
-    if not hasattr(state.config, "_targets"):
-        state.config.__dict__["_targets"] = {}
     for t in targets:
-        state.config.__dict__.setdefault("_targets", {})[t["id"]] = t
+        state.config.targets[t["id"]] = t
     _save()
     return {"registered": len(targets), "target_ids": [t["id"] for t in targets]}
 
@@ -260,7 +257,7 @@ def mcts_get_status() -> dict:
     """Get current search status."""
     state = _get_state()
     improvement = None
-    if state.seed_score and state.best_score is not None and state.seed_score != 0:
+    if state.seed_score is not None and state.best_score is not None and state.seed_score != 0:
         pct = (state.best_score - state.seed_score) / abs(state.seed_score) * 100
         improvement = f"{pct:+.1f}%"
     return {
@@ -375,6 +372,8 @@ def mcts_step(
             "branch": branch,
             "op": item.op if item else op,
             "parent_branch": item.parent_branch if item else parent_branch,
+            "benchmark_cmd": state.config.benchmark_cmd,
+            "quick_cmd": state.config.quick_cmd,
         }
 
     # ------------------------------------------------------------------ policy_fail
@@ -424,6 +423,10 @@ def mcts_step(
         )
         state.all_nodes[branch] = node
         state.total_evals += 1
+
+        # UCB: increment visit count on the parent so exploration term decays.
+        if parent_branch and parent_branch in state.all_nodes:
+            state.all_nodes[parent_branch].visit_count += 1
 
         if code_hash and success:
             state.score_cache[f"{op}:{code_hash}"] = fitness
@@ -480,8 +483,18 @@ def mcts_step(
 
         # Build tree text for GateAgent
         tree_text = _build_tree_text(state)
+        def _delta(score: float | None) -> str | None:
+            if score is None or state.seed_score is None or state.seed_score == 0:
+                return None
+            return f"{(score - state.seed_score) / abs(state.seed_score) * 100:+.3f}"
+
         top_nodes = [
-            {"branch": b, "score": state.all_nodes[b].score, "op": state.all_nodes[b].op}
+            {
+                "branch": b,
+                "score": state.all_nodes[b].score,
+                "op": state.all_nodes[b].op,
+                "delta": _delta(state.all_nodes[b].score),
+            }
             for b in keep if b in state.all_nodes
         ]
 
@@ -600,9 +613,8 @@ def _begin_generation(state: SearchState) -> dict:
 
 def _find_target(state: SearchState) -> dict:
     """Return first registered target info, or empty dict."""
-    targets = state.config.__dict__.get("_targets", {})
-    if targets:
-        return next(iter(targets.values()))
+    if state.config.targets:
+        return next(iter(state.config.targets.values()))
     return {}
 
 

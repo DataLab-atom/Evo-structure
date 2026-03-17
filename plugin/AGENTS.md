@@ -249,10 +249,12 @@ memory/
     ├── insert.md                 — global insert op success/failure log
     ├── merge.md
     ├── decouple.md
+    ├── split.md
+    ├── extract.md
     ├── parallelize.md
-    ├── cache.md
+    ├── pipeline.md
     ├── stratify.md
-    └── pipeline.md
+    └── cache.md
 ```
 
 ---
