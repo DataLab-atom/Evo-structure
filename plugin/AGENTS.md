@@ -13,6 +13,19 @@
 
 > **UCB selection** and **batch planning** are server-side in `mcts_step` — no LLM needed.
 
+## Standalone Tools (not mcts_step phases)
+
+| Tool | Called by | Purpose |
+|------|-----------|---------|
+| `mcts_init` | OrchestratorAgent (once) | Initialize run, set config, record seed score |
+| `mcts_register_targets` | MapAgent (once) | Register optimization targets (file, function) |
+| `mcts_check_cache` | ComboAgent (before codegen) | Check if `(op, code_hash)` was already evaluated |
+| `mcts_get_status` | Any agent | Query current run progress, best score, evals used |
+| `mcts_get_lineage` | Any agent | Get git ancestry chain for a branch |
+| `mcts_freeze_branch` | OrchestratorAgent | Permanently stop expanding a branch |
+| `mcts_boost_branch` | OrchestratorAgent | Halve visit_count to raise a branch's UCB priority |
+| `mcts_record_synergy` | ReflectAgent | Record cross-op synergy results |
+
 ---
 
 ## Core Loop
@@ -214,7 +227,7 @@ Each item: `{branch, op, parent_branch, target_file, target_function, node_a, no
 Returns `{action: "check_policy", branch, parent_commit, op, target_file, parent_branch, changed_files, diff, protected_patterns}`
 
 ### `mcts_step("policy_pass", branch)`
-Returns `{action: "run_benchmark", branch, op, parent_branch}`
+Returns `{action: "run_benchmark", branch, op, parent_branch, benchmark_cmd, quick_cmd}`
 
 ### `mcts_step("policy_fail", branch, reason)`
 Returns `{action: "worker_done", branch, rejected: true, reason}`

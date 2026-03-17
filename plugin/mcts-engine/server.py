@@ -78,7 +78,7 @@ def mcts_init(
     objective: str = "max",
     beam_width: int = 3,
     max_evals: int = 150,
-    gate_interval: int = 1,
+    gate_interval: int = 5,
     synergy_interval: int = 3,
     top_k_frontier: int = 3,
     quick_cmd: str = "",
@@ -585,11 +585,18 @@ def _begin_generation(state: SearchState) -> dict:
         return {"action": _PHASE_DONE, "reason": "all op combinations exhausted",
                 "total_evals": state.total_evals}
 
-    # Build BatchItems and assign branch names
+    # Build BatchItems and assign branch names.
+    # Cycle through registered targets so all get equal coverage.
+    target_list = list(state.config.targets.values()) or [{}]
+    obj_direction = "maximize" if is_max else "minimize"
     batch: list[BatchItem] = []
-    for raw in raw_items[:budget]:
-        target_info = _find_target(state)
+    for i, raw in enumerate(raw_items[:budget]):
+        target_info = target_list[i % len(target_list)]
         branch = f"mcts/{state.run_id}/gen-{state.generation}/{raw['op']}-{uuid.uuid4().hex[:8]}"
+        hint = (
+            f"{target_info.get('description', '')} "
+            f"Apply '{raw['op']}' to {obj_direction} the benchmark score."
+        ).strip()
         batch.append(BatchItem(
             branch=branch,
             op=raw["op"],
@@ -598,6 +605,7 @@ def _begin_generation(state: SearchState) -> dict:
             target_function=target_info.get("function", ""),
             node_a=raw["node_a"],
             node_b=raw["node_b"],
+            direction_hint=hint,
         ))
 
     state.current_batch = batch
