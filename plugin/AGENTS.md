@@ -77,12 +77,12 @@ ComboAgent receives: item = {branch, op, parent_branch, target_file, target_func
       Input: {node_a code, node_b code, direction_hint, memory_context}
       Output: {node_a, node_b, direction} = what to combine/modify
 
-   b. mcts_parse_atomic_ops:
+   b. Parse atomic ops (LLM-side, not a server tool):
       Input: critic output
       Output: [atomic_op_1, atomic_op_2, ...]
 
    c. For each atomic_op:
-      - Simple change → mcts_engineer(LLM) → patch
+      - Simple change → LLM generates patch directly
       - Complex structural rewrite or crossover → coding-agent (claude/codex CLI)
 
 5. STATIC CHECK (before committing)
@@ -93,7 +93,7 @@ ComboAgent receives: item = {branch, op, parent_branch, target_file, target_func
    If structural error: discard, report success=False
 
 6. COLLECT + COMMIT
-   mcts_collect_patches → filter AST-valid patches
+   Filter AST-valid patches (python -m py_compile)
    git add {item.target_file}
    git commit -m "mcts(score=pending,op={op},gen={N},run={run_id}): {one-line description}"
    # All patches in one commit

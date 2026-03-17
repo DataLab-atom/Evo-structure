@@ -63,8 +63,8 @@ class SearchConfig(BaseModel):
         "run_eval*", "test_bench*", "*.sh",
     ])
     ops: list[str] = Field(default_factory=lambda: [
-        "insert", "merge", "decouple", "parallelize",
-        "cache", "stratify", "pipeline",
+        "insert", "merge", "decouple", "split", "extract",
+        "parallelize", "pipeline", "stratify", "cache",
     ])
 
 

@@ -49,8 +49,8 @@ read memory/ops/{item.op}/failures.md      ← patterns to avoid
 - Input: node_a code, node_b code, direction_hint, memory_context from step 3
 - Output: `{node_a, node_b, direction}` — what to combine and how
 
-**Step B: Parse atomic ops**
-- `mcts_parse_atomic_ops(critic_output)` → list of atomic changes
+**Step B: Parse atomic ops** (LLM-side, not a server tool)
+- Parse the critic output into a list of atomic changes
 
 **Step C: Engineer (LLM) per atomic op**
 
@@ -86,9 +86,7 @@ pyflakes {item.target_file}                # imports/names — if available
 
 ### 6. Collect + Commit
 
-```python
-mcts_collect_patches()   # filter AST-valid patches only
-```
+Filter out any AST-invalid patches (run `python -m py_compile` on each).
 
 ```bash
 git add {item.target_file}

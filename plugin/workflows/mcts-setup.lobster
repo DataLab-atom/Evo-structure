@@ -26,7 +26,7 @@ steps:
     command: exec --shell 'git -C "{args.repo}" tag seed-baseline'
 
   - id: create_memory_dirs
-    command: exec --shell 'mkdir -p "{args.repo}/memory/global" "{args.repo}/memory/projects" "{args.repo}/memory/ops/insert" "{args.repo}/memory/ops/merge" "{args.repo}/memory/ops/decouple" "{args.repo}/memory/ops/parallelize" "{args.repo}/memory/ops/cache" "{args.repo}/memory/ops/stratify" "{args.repo}/memory/ops/pipeline"'
+    command: exec --shell 'mkdir -p "{args.repo}/memory/global" "{args.repo}/memory/projects" "{args.repo}/memory/ops/insert" "{args.repo}/memory/ops/merge" "{args.repo}/memory/ops/decouple" "{args.repo}/memory/ops/split" "{args.repo}/memory/ops/extract" "{args.repo}/memory/ops/parallelize" "{args.repo}/memory/ops/pipeline" "{args.repo}/memory/ops/stratify" "{args.repo}/memory/ops/cache"'
 
   - id: init_canvas_dir
     command: exec --shell 'mkdir -p ~/clawd/canvas'

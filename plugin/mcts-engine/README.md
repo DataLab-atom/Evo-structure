@@ -51,7 +51,7 @@ which mcts-engine   # /usr/local/bin/mcts-engine
       "command": "mcts-engine",
       "args": [],
       "env": {
-        "COG_STATE_DIR": "/path/to/state"   // 可选，默认 ~/.cog/state
+        "COG_STATE_DIR": "/path/to/state"   // 可选，默认 ~/.openclaw/mcts-state
       }
     }
   }
@@ -96,7 +96,7 @@ mcts_init(...)
 
 ## 状态持久化
 
-`COG_STATE_DIR`（默认 `~/.cog/state`）下保存 `state.json`，进程崩溃后重启可从断点继续。
+`COG_STATE_DIR`（默认 `~/.openclaw/mcts-state`）下保存 `state.json`，进程崩溃后重启可从断点继续。
 
 ## 已知问题 / 注意事项
 
