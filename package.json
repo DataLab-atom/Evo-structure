@@ -1,0 +1,34 @@
+{
+  "name": "evo-structure",
+  "version": "0.1.0",
+  "description": "Git-native Monte Carlo Tree Search for structural code optimization. MCTS Beam Search with UCB selection, async human gate, and cross-run op memory.",
+  "keywords": [
+    "ai",
+    "mcts",
+    "code-optimization",
+    "structural-search",
+    "mcp",
+    "openclaw",
+    "claude"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DataLab-atom/Evo-structure.git"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "bin": {
+    "evo-structure": "scripts/cli.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "files": [
+    "plugin/",
+    "scripts/",
+    "README.md",
+    "README_EN.md"
+  ]
+}
