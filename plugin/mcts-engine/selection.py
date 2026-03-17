@@ -6,6 +6,8 @@ import math
 import random
 from typing import TYPE_CHECKING
 
+from models import NodeStatus, Objective
+
 if TYPE_CHECKING:
     from models import Node, SearchConfig, SearchState
 
@@ -28,7 +30,7 @@ def select_frontier(
     """Select top-k frontier nodes by UCB score."""
     candidates = [
         n for n in all_nodes.values()
-        if n.success and n.score is not None and n.status.value == "active"
+        if n.success and n.score is not None and n.status == NodeStatus.ACTIVE
     ]
     if not candidates:
         return []
@@ -46,7 +48,7 @@ def plan_batch(
     state: "SearchState",
 ) -> list[dict]:
     """Plan next generation batch: frontier nodes × untried ops."""
-    is_max = state.config.objective.value == "max"
+    is_max = state.config.objective == Objective.MAX
     frontier = state.frontier or [state.seed_branch]
     ops = state.config.ops
     beam_width = state.config.beam_width
@@ -96,7 +98,7 @@ def select_survivors(
     # Consider all successful nodes as candidates for next frontier
     candidates = [
         n for n in all_nodes.values()
-        if n.success and n.score is not None and n.status.value == "active"
+        if n.success and n.score is not None and n.status == NodeStatus.ACTIVE
     ]
     if not candidates:
         return frontier, []
