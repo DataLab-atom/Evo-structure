@@ -519,7 +519,7 @@ def mcts_step(
         if action == "stop":
             return {"action": _PHASE_DONE, "reason": "user stopped",
                     "best_branch": state.best_branch, "best_score": state.best_score}
-        if action == "rollback" and state.generation > 1:
+        elif action == "rollback" and state.generation > 1:
             # Revert frontier to previous generation's nodes
             prev_gen = state.generation - 2
             prev_nodes = [
@@ -529,12 +529,12 @@ def mcts_step(
             if prev_nodes:
                 state.frontier = prev_nodes[:state.config.top_k_frontier]
                 _save()
-        if action == "select" and selected_branch:
+        elif action == "select" and selected_branch:
             state.frontier = [selected_branch]
             _save()
-        if action == "freeze" and selected_branch:
+        elif action == "freeze" and selected_branch:
             mcts_freeze_branch(selected_branch)
-        if action == "boost" and selected_branch:
+        elif action == "boost" and selected_branch:
             mcts_boost_branch(selected_branch)
         return {"action": "reflect"}
 
@@ -618,12 +618,6 @@ def _begin_generation(state: SearchState) -> dict:
         "items": [item.model_dump() for item in batch],
     }
 
-
-def _find_target(state: SearchState) -> dict:
-    """Return first registered target info, or empty dict."""
-    if state.config.targets:
-        return next(iter(state.config.targets.values()))
-    return {}
 
 
 def _build_tree_text(state: SearchState) -> str:
