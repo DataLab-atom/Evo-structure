@@ -54,7 +54,7 @@ class SearchConfig(BaseModel):
     objective: Objective = Objective.MAX
     beam_width: int = 3
     max_evals: int = 150
-    gate_interval: int = 1       # run GateAgent every N generations
+    gate_interval: int = 5       # run GateAgent every N generations
     synergy_interval: int = 3    # run synergy check every N generations
     top_k_frontier: int = 3      # keep top K nodes in frontier
     quick_cmd: Optional[str] = None
@@ -63,9 +63,10 @@ class SearchConfig(BaseModel):
         "run_eval*", "test_bench*", "*.sh",
     ])
     ops: list[str] = Field(default_factory=lambda: [
-        "insert", "merge", "decouple", "parallelize",
-        "cache", "stratify", "pipeline",
+        "insert", "merge", "decouple", "split", "extract",
+        "parallelize", "pipeline", "stratify", "cache",
     ])
+    targets: dict[str, dict] = Field(default_factory=dict)
 
 
 class SearchState(BaseModel):

@@ -14,7 +14,7 @@ A structural evolution engine designed as the MCTS counterpart to Evo-anything, 
 | **Persistent state machine** | mcts-engine MCP Server — crash-recoverable, process-independent |
 | **Async Human Gate** | Synchronous blocking → message push + cron auto-continue on timeout; decide from your phone |
 | **Cross-run memory** | Op experience across runs to avoid repeating failed directions |
-| **8 structural operators** | insert / merge / decouple / split / extract / parallelize / pipeline / stratify |
+| **9 structural operators** | insert / merge / decouple / split / extract / parallelize / pipeline / stratify / cache |
 
 ## Installation
 
@@ -271,7 +271,7 @@ Evo-structure maps each **search node** of the traditional MCTS Beam Search to a
 | tree structure | `git log --graph --all` | Full lineage graph |
 | parallel eval | git worktree | True isolation |
 
-### 8 Structural Operators
+### 9 Structural Operators
 
 | Type | Operator | Semantics |
 |------|----------|-----------|
@@ -283,6 +283,7 @@ Evo-structure maps each **search node** of the traditional MCTS Beam Search to a
 | N-ary | `parallelize` | Convert sequential intermediate nodes to concurrent |
 | N-ary | `pipeline` | Convert chain to streaming processing |
 | N-ary | `stratify` | Reorganize cross-layer dependencies into ordered layers |
+| Unary | `cache` | Introduce a caching layer on the hot path |
 
 ### Search Loop
 

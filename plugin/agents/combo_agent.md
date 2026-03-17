@@ -34,7 +34,7 @@ code_hash = sha256(content of item.target_file on parent_branch)
 result = mcts_check_cache(op=item.op, code_hash=code_hash)
 ```
 
-If cached → `mcts_step("fitness_ready", ..., fitness=result.score, cached=True)` → exit.
+If cached → `mcts_step("fitness_ready", branch=item.branch, fitness=result.score, success=True, op=item.op, parent_branch=item.parent_branch, code_hash=code_hash)` → exit.
 
 ### 3. Read Memory
 
@@ -49,8 +49,8 @@ read memory/ops/{item.op}/failures.md      ← patterns to avoid
 - Input: node_a code, node_b code, direction_hint, memory_context from step 3
 - Output: `{node_a, node_b, direction}` — what to combine and how
 
-**Step B: Parse atomic ops**
-- `mcts_parse_atomic_ops(critic_output)` → list of atomic changes
+**Step B: Parse atomic ops** (LLM-side, not a server tool)
+- Parse the critic output into a list of atomic changes
 
 **Step C: Engineer (LLM) per atomic op**
 
@@ -86,9 +86,7 @@ pyflakes {item.target_file}                # imports/names — if available
 
 ### 6. Collect + Commit
 
-```python
-mcts_collect_patches()   # filter AST-valid patches only
-```
+Filter out any AST-invalid patches (run `python -m py_compile` on each).
 
 ```bash
 git add {item.target_file}

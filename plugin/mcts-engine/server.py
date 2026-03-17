@@ -9,7 +9,6 @@ The agents call these tools; the LLM handles code generation and reflection.
 
 from __future__ import annotations
 
-import fnmatch
 import os
 import subprocess
 import uuid
@@ -78,7 +77,7 @@ def mcts_init(
     objective: str = "max",
     beam_width: int = 3,
     max_evals: int = 150,
-    gate_interval: int = 1,
+    gate_interval: int = 5,
     synergy_interval: int = 3,
     top_k_frontier: int = 3,
     quick_cmd: str = "",
@@ -140,11 +139,8 @@ def mcts_register_targets(targets: list[dict]) -> dict:
             id, file, function, lines (optional), impact (optional), description (optional).
     """
     state = _get_state()
-    # Store targets as part of config metadata (lightweight — just for memory paths)
-    if not hasattr(state.config, "_targets"):
-        state.config.__dict__["_targets"] = {}
     for t in targets:
-        state.config.__dict__.setdefault("_targets", {})[t["id"]] = t
+        state.config.targets[t["id"]] = t
     _save()
     return {"registered": len(targets), "target_ids": [t["id"] for t in targets]}
 
@@ -260,7 +256,7 @@ def mcts_get_status() -> dict:
     """Get current search status."""
     state = _get_state()
     improvement = None
-    if state.seed_score and state.best_score is not None and state.seed_score != 0:
+    if state.seed_score is not None and state.best_score is not None and state.seed_score != 0:
         pct = (state.best_score - state.seed_score) / abs(state.seed_score) * 100
         improvement = f"{pct:+.1f}%"
     return {
@@ -375,6 +371,8 @@ def mcts_step(
             "branch": branch,
             "op": item.op if item else op,
             "parent_branch": item.parent_branch if item else parent_branch,
+            "benchmark_cmd": state.config.benchmark_cmd,
+            "quick_cmd": state.config.quick_cmd,
         }
 
     # ------------------------------------------------------------------ policy_fail
@@ -424,6 +422,10 @@ def mcts_step(
         )
         state.all_nodes[branch] = node
         state.total_evals += 1
+
+        # UCB: increment visit count on the parent so exploration term decays.
+        if parent_branch and parent_branch in state.all_nodes:
+            state.all_nodes[parent_branch].visit_count += 1
 
         if code_hash and success:
             state.score_cache[f"{op}:{code_hash}"] = fitness
@@ -480,8 +482,18 @@ def mcts_step(
 
         # Build tree text for GateAgent
         tree_text = _build_tree_text(state)
+        def _delta(score: float | None) -> str | None:
+            if score is None or state.seed_score is None or state.seed_score == 0:
+                return None
+            return f"{(score - state.seed_score) / abs(state.seed_score) * 100:+.3f}"
+
         top_nodes = [
-            {"branch": b, "score": state.all_nodes[b].score, "op": state.all_nodes[b].op}
+            {
+                "branch": b,
+                "score": state.all_nodes[b].score,
+                "op": state.all_nodes[b].op,
+                "delta": _delta(state.all_nodes[b].score),
+            }
             for b in keep if b in state.all_nodes
         ]
 
@@ -506,7 +518,7 @@ def mcts_step(
         if action == "stop":
             return {"action": _PHASE_DONE, "reason": "user stopped",
                     "best_branch": state.best_branch, "best_score": state.best_score}
-        if action == "rollback" and state.generation > 1:
+        elif action == "rollback" and state.generation > 1:
             # Revert frontier to previous generation's nodes
             prev_gen = state.generation - 2
             prev_nodes = [
@@ -516,12 +528,12 @@ def mcts_step(
             if prev_nodes:
                 state.frontier = prev_nodes[:state.config.top_k_frontier]
                 _save()
-        if action == "select" and selected_branch:
+        elif action == "select" and selected_branch:
             state.frontier = [selected_branch]
             _save()
-        if action == "freeze" and selected_branch:
+        elif action == "freeze" and selected_branch:
             mcts_freeze_branch(selected_branch)
-        if action == "boost" and selected_branch:
+        elif action == "boost" and selected_branch:
             mcts_boost_branch(selected_branch)
         return {"action": "reflect"}
 
@@ -572,11 +584,18 @@ def _begin_generation(state: SearchState) -> dict:
         return {"action": _PHASE_DONE, "reason": "all op combinations exhausted",
                 "total_evals": state.total_evals}
 
-    # Build BatchItems and assign branch names
+    # Build BatchItems and assign branch names.
+    # Cycle through registered targets so all get equal coverage.
+    target_list = list(state.config.targets.values()) or [{}]
+    obj_direction = "maximize" if is_max else "minimize"
     batch: list[BatchItem] = []
-    for raw in raw_items[:budget]:
-        target_info = _find_target(state)
+    for i, raw in enumerate(raw_items[:budget]):
+        target_info = target_list[i % len(target_list)]
         branch = f"mcts/{state.run_id}/gen-{state.generation}/{raw['op']}-{uuid.uuid4().hex[:8]}"
+        hint = (
+            f"{target_info.get('description', '')} "
+            f"Apply '{raw['op']}' to {obj_direction} the benchmark score."
+        ).strip()
         batch.append(BatchItem(
             branch=branch,
             op=raw["op"],
@@ -585,6 +604,7 @@ def _begin_generation(state: SearchState) -> dict:
             target_function=target_info.get("function", ""),
             node_a=raw["node_a"],
             node_b=raw["node_b"],
+            direction_hint=hint,
         ))
 
     state.current_batch = batch
@@ -597,13 +617,6 @@ def _begin_generation(state: SearchState) -> dict:
         "items": [item.model_dump() for item in batch],
     }
 
-
-def _find_target(state: SearchState) -> dict:
-    """Return first registered target info, or empty dict."""
-    targets = state.config.__dict__.get("_targets", {})
-    if targets:
-        return next(iter(targets.values()))
-    return {}
 
 
 def _build_tree_text(state: SearchState) -> str:

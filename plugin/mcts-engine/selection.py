@@ -6,15 +6,24 @@ import math
 import random
 from typing import TYPE_CHECKING
 
+from models import NodeStatus, Objective
+
 if TYPE_CHECKING:
     from models import Node, SearchConfig, SearchState
 
 
-def ucb_score(node: "Node", total_visits: int, exploration: float = 1.41) -> float:
-    """UCB1 score for a node."""
+def ucb_score(node: "Node", total_visits: int, exploration: float = 1.41,
+              sign: float = 1.0) -> float:
+    """UCB1 score for a node.
+
+    sign=+1.0 for maximize (higher raw score is better),
+    sign=-1.0 for minimize (lower raw score is better).
+    Exploration bonus is always added positively so unexplored nodes are
+    preferred regardless of objective direction.
+    """
     if node.score is None or not node.success:
         return -float("inf")
-    exploit = node.score
+    exploit = sign * node.score
     explore = exploration * math.sqrt(math.log(max(total_visits, 1)) / max(node.visit_count, 1))
     return exploit + explore
 
@@ -28,7 +37,7 @@ def select_frontier(
     """Select top-k frontier nodes by UCB score."""
     candidates = [
         n for n in all_nodes.values()
-        if n.success and n.score is not None and n.status.value == "active"
+        if n.success and n.score is not None and n.status == NodeStatus.ACTIVE
     ]
     if not candidates:
         return []
@@ -36,7 +45,7 @@ def select_frontier(
     sign = 1.0 if is_maximize else -1.0
     scored = sorted(
         candidates,
-        key=lambda n: sign * ucb_score(n, total_visits),
+        key=lambda n: ucb_score(n, total_visits, sign=sign),
         reverse=True,
     )
     return [n.branch for n in scored[:top_k]]
@@ -46,7 +55,7 @@ def plan_batch(
     state: "SearchState",
 ) -> list[dict]:
     """Plan next generation batch: frontier nodes × untried ops."""
-    is_max = state.config.objective.value == "max"
+    is_max = state.config.objective == Objective.MAX
     frontier = state.frontier or [state.seed_branch]
     ops = state.config.ops
     beam_width = state.config.beam_width
@@ -96,7 +105,7 @@ def select_survivors(
     # Consider all successful nodes as candidates for next frontier
     candidates = [
         n for n in all_nodes.values()
-        if n.success and n.score is not None and n.status.value == "active"
+        if n.success and n.score is not None and n.status == NodeStatus.ACTIVE
     ]
     if not candidates:
         return frontier, []
@@ -104,7 +113,7 @@ def select_survivors(
     sign = 1.0 if is_maximize else -1.0
     ranked = sorted(
         candidates,
-        key=lambda n: sign * ucb_score(n, total_visits),
+        key=lambda n: ucb_score(n, total_visits, sign=sign),
         reverse=True,
     )
     keep_nodes = ranked[:top_k]

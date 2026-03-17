@@ -13,6 +13,19 @@
 
 > **UCB selection** and **batch planning** are server-side in `mcts_step` — no LLM needed.
 
+## Standalone Tools (not mcts_step phases)
+
+| Tool | Called by | Purpose |
+|------|-----------|---------|
+| `mcts_init` | OrchestratorAgent (once) | Initialize run, set config, record seed score |
+| `mcts_register_targets` | MapAgent (once) | Register optimization targets (file, function) |
+| `mcts_check_cache` | ComboAgent (before codegen) | Check if `(op, code_hash)` was already evaluated |
+| `mcts_get_status` | Any agent | Query current run progress, best score, evals used |
+| `mcts_get_lineage` | Any agent | Get git ancestry chain for a branch |
+| `mcts_freeze_branch` | OrchestratorAgent | Permanently stop expanding a branch |
+| `mcts_boost_branch` | OrchestratorAgent | Halve visit_count to raise a branch's UCB priority |
+| `mcts_record_synergy` | ReflectAgent | Record cross-op synergy results |
+
 ---
 
 ## Core Loop
@@ -42,6 +55,8 @@ LOOP:
       if step.action == "gate":
           spawn GateAgent(step)          ← every gate_interval generations
           step = mcts_step("gate_done", ...) from GateAgent result
+          if step.action == "done":
+              break  ← user stopped; exit loop
 
       spawn ReflectAgent(step)
       step = mcts_step("reflect_done")
@@ -77,12 +92,12 @@ ComboAgent receives: item = {branch, op, parent_branch, target_file, target_func
       Input: {node_a code, node_b code, direction_hint, memory_context}
       Output: {node_a, node_b, direction} = what to combine/modify
 
-   b. mcts_parse_atomic_ops:
+   b. Parse atomic ops (LLM-side, not a server tool):
       Input: critic output
       Output: [atomic_op_1, atomic_op_2, ...]
 
    c. For each atomic_op:
-      - Simple change → mcts_engineer(LLM) → patch
+      - Simple change → LLM generates patch directly
       - Complex structural rewrite or crossover → coding-agent (claude/codex CLI)
 
 5. STATIC CHECK (before committing)
@@ -93,7 +108,7 @@ ComboAgent receives: item = {branch, op, parent_branch, target_file, target_func
    If structural error: discard, report success=False
 
 6. COLLECT + COMMIT
-   mcts_collect_patches → filter AST-valid patches
+   Filter AST-valid patches (python -m py_compile)
    git add {item.target_file}
    git commit -m "mcts(score=pending,op={op},gen={N},run={run_id}): {one-line description}"
    # All patches in one commit
@@ -148,22 +163,22 @@ ComboAgent receives: item = {branch, op, parent_branch, target_file, target_func
 ```
 GateAgent receives: {top_nodes, tree_text, best_branch, best_score, generation}
 
-1. mcts_gate_notify(channel_id, tree_text, top_nodes, timeout=30min)
-   → push tree snapshot to messaging channel (WhatsApp/Telegram)
-   → create cron task: auto-continue after timeout
+1. Send tree snapshot via OpenClaw messaging channel (Telegram/WhatsApp/Slack)
+   Format: tree_text + top_nodes summary + available commands
+   Register cron auto-continue after 30min timeout
 
-2. mcts_gate_wait(resume_token)
-   → block until user responds or timeout fires
+2. Wait for user response (poll channel or webhook)
 
    Accepted responses:
      "continue"           → {action: "continue"}
      "stop"               → {action: "stop"}
      "rollback"           → {action: "rollback"}
      "select gen5/insert" → {action: "select", selected_branch: "..."}
-     "freeze {branch}"    → {action: "freeze", target: branch}
-     "boost {branch}"     → {action: "boost", target: branch}
+     "freeze {branch}"    → {action: "freeze", selected_branch: branch}
+     "boost {branch}"     → {action: "boost", selected_branch: branch}
 
-3. mcts_step("gate_done", action=..., selected_branch=...)
+3. Cancel cron timer, then:
+   mcts_step("gate_done", action=..., selected_branch=...)
 ```
 
 ---
@@ -205,15 +220,16 @@ ReflectAgent receives: {keep, eliminate, best_branch, best_score, generation}
 ## State Machine — Phase Reference
 
 ### `mcts_step("begin_generation")`
-Returns `{action: "dispatch_combos", generation, items: [...]}`
+Returns `{action: "dispatch_combos", generation, batch_size, items: [...]}`
+(May also include `resumed: true` when recovering from a crash mid-batch.)
 
 Each item: `{branch, op, parent_branch, target_file, target_function, node_a, node_b, direction_hint}`
 
 ### `mcts_step("code_ready", branch, parent_commit)`
-Returns `{action: "check_policy", branch, diff, changed_files, protected_patterns, target_file, op}`
+Returns `{action: "check_policy", branch, parent_commit, op, target_file, parent_branch, changed_files, diff, protected_patterns}`
 
 ### `mcts_step("policy_pass", branch)`
-Returns `{action: "run_benchmark", branch, op, parent_branch}`
+Returns `{action: "run_benchmark", branch, op, parent_branch, benchmark_cmd, quick_cmd}`
 
 ### `mcts_step("policy_fail", branch, reason)`
 Returns `{action: "worker_done", branch, rejected: true, reason}`
@@ -222,7 +238,7 @@ Returns `{action: "worker_done", branch, rejected: true, reason}`
 Returns `{action: "worker_done", branch, fitness, success, is_new_best, total_evals}`
 
 ### `mcts_step("select")`
-Returns `{action: "gate"|"reflect", keep, eliminate, best_branch, best_score, top_nodes, tree_text}`
+Returns `{action: "gate"|"reflect", keep, eliminate, best_branch, best_score, top_nodes, tree_text, generation}`
 
 ### `mcts_step("gate_done", action, selected_branch="")`
 Returns `{action: "reflect"}` | `{action: "done"}`
@@ -248,10 +264,12 @@ memory/
     ├── insert.md                 — global insert op success/failure log
     ├── merge.md
     ├── decouple.md
+    ├── split.md
+    ├── extract.md
     ├── parallelize.md
-    ├── cache.md
+    ├── pipeline.md
     ├── stratify.md
-    └── pipeline.md
+    └── cache.md
 ```
 
 ---

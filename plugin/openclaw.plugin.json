@@ -5,6 +5,7 @@
   "kind": "agent-tool",
   "skills": ["./skills"],
   "agents": ["./agents"],
+  "workflows": ["./workflows"],
   "tools": {
     "server": "./mcts-engine/server.py",
     "alsoAllow": ["lobster", "canvas", "tmux"]
